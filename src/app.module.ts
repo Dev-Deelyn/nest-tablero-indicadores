@@ -4,12 +4,14 @@ import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
     MongooseModule.forRoot('mongodb://localhost/nest'),
     AuthModule,
-    UserModule
+    UserModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

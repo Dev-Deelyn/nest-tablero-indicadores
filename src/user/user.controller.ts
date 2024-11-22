@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
 import { User } from './user.schema';
 import { UserService } from './user.service';
@@ -30,5 +30,23 @@ export class UserController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('dashboard/:dashboardId')
+  async removeDashboardFromUser(
+    @Request() request,
+    @Param('dashboardId') dashboardId: string,
+  ): Promise<User> {
+    return this.userService.removeDashboardFromUser(request.user, dashboardId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('dashboard/:dashboardId')
+  async addDashboardToUser(
+    @Request() request,
+    @Param('dashboardId') dashboardId: string,
+  ): Promise<User> {
+    return this.userService.addDashboardToUser(request.user, dashboardId);
   }
 }
