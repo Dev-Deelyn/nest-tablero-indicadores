@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
-import { User } from './user.schema';
+import { User, UserDocument } from './user.schema';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -10,7 +10,8 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get()
   getProfile(@Request() req) {
-    return req.user;
+    const { username, profileType } = req.user as UserDocument;
+    return { username, profileType };
   }
 
   @Post()

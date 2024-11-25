@@ -10,7 +10,7 @@ export class AuthController {
   async login(@Request() req) {
     const user: UserDocument = await this.authService.validateUser(req.body.username, req.body.password);
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Error pa');
     }
     return this.authService.login(user);
   }

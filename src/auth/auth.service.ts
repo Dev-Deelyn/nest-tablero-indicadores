@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs'
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -14,11 +14,16 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.userModel.findOne({ username });
-    if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user.toObject();
-      return result;
+    if (user) {
+      if (await bcrypt.compare(password, user.password)) {
+        const { password, ...result } = user.toObject();
+        return result;
+      } else {
+        throw new HttpException('La contraseña ingresada es incorrecta', HttpStatus.UNAUTHORIZED)
+      }
+    } else {
+      throw new HttpException('El usuario de sesión no existe', HttpStatus.UNAUTHORIZED)
     }
-    return null;
   }
 
   async login(user: any) {
