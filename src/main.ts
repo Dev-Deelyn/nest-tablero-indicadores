@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './response/response.interceptor';
-import { GlobalExceptionFilter } from './response/response.filter';
+import { ResponseFilter } from './response/response.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +11,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Aplica el filtro globalmente para manejar excepciones
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new ResponseFilter());
 
   await app.listen(process.env.PORT ?? 3000);
 }
