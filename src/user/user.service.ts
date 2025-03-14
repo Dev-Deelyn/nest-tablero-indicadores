@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './user.schema';
 import { Model, Types } from 'mongoose';
@@ -32,12 +32,29 @@ export class UserService {
   }
 
   async addDashboardToUser(userId: string, dashboardId: string): Promise<User> {
-    return this.userModel.findByIdAndUpdate(
+    // Busca el dashboard primero
+    const dashboard = await this.dashboardModel.findById(dashboardId); // Asegúrate de que tienes el modelo de Dashboard disponible
+    if (!dashboard) {
+      throw new HttpException('Dashboard no encontrado', HttpStatus.NOT_FOUND);
+    }
+  
+    // Extrae la propiedad `keyname`
+    const dashboardKeyname = dashboard.keyname;
+  
+    // Actualiza el usuario con el `keyname` del dashboard
+    const updatedUser = await this.userModel.findByIdAndUpdate(
       userId,
-      { $push: { dashboards: dashboardId } },
+      { $push: { dashboards: dashboardKeyname } }, // Guarda `keyname` en lugar del ID
       { new: true }
-    ).populate('dashboards');
+    ).populate('dashboards'); // Popula si `dashboards` sigue siendo una referencia
+  
+    if (!updatedUser) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+  
+    return updatedUser;
   }
+  
 
   async removeDashboardFromUser(userId: string, dashboardId: string): Promise<User> {
     const dashboardExists = await this.dashboardModel.exists({ _id: dashboardId });

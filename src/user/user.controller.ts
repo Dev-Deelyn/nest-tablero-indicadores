@@ -10,8 +10,8 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get()
   getProfile(@Request() req) {
-    const { username, profileType } = req.user as UserDocument;
-    return { username, profileType };
+    const { username, profileType, dashboards } = req.user as UserDocument;
+    return { username, profileType, dashboards };
   }
 
   @Post()
