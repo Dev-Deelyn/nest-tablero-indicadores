@@ -20,18 +20,31 @@ export class UserController {
     return this.userService.createNewUser(username, password, email, profileType);
   }
 
-  @Get('get-all')
-  async getAllUsers(): Promise<User[]> {
+  @Delete()
+  async deleteUser(@Body() body: any) {
+    const { username, email } = body;
     try {
-      const users = await this.userService.getAllUsers();
-      return users;
+      return await this.userService.deleteUser(username, email);
     } catch (error) {
       throw new HttpException(
-        'Error al obtener los usuarios',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        error.message || 'Error al eliminar el usuario',
+        HttpStatus.BAD_REQUEST
       );
     }
   }
+
+  @Get('get-all')
+async getAllUsers(): Promise<User[]> {
+  try {
+    return await this.userService.getAllUsers();
+  } catch (error) {
+    throw new HttpException(
+      `Error al obtener los usuarios: ${error.message}`,
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 
   @UseGuards(JwtAuthGuard)
   @Delete('dashboard/:dashboardId')

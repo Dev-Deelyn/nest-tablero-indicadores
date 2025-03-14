@@ -23,6 +23,14 @@ export class UserService {
     return newUser.save();
   }
 
+  async deleteUser(username: string, email: string): Promise<{ message: string }> {
+    const user = await this.userModel.findOneAndDelete({ username, email });
+    if (!user) {
+      throw new Error('Usuario no encontrado.');
+    }
+    return { message: 'Usuario eliminado correctamente.' };
+  }
+
   async addDashboardToUser(userId: string, dashboardId: string): Promise<User> {
     return this.userModel.findByIdAndUpdate(
       userId,
