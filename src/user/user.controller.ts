@@ -48,6 +48,6 @@ export class UserController {
     @Request() request,
     @Param('dashboardId') dashboardId: string,
   ): Promise<User> {
-    return this.userService.addDashboardToUser(request.user, dashboardId);
+    return this.userService.addDashboardToUser(request.user.sub, dashboardId);
   }
 }
