@@ -39,7 +39,7 @@ export class UserController {
     @Request() request,
     @Param('dashboardId') dashboardId: string,
   ): Promise<User> {
-    return this.userService.removeDashboardFromUser(request.user, dashboardId);
+    return this.userService.removeDashboardFromUser(request.user.sub, dashboardId);
   }
 
   @UseGuards(JwtAuthGuard)
