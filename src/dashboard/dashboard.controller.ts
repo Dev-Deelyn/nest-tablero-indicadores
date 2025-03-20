@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Post, Put} from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { Dashboard } from './dashboard.schema';
 
@@ -24,4 +24,17 @@ export class DashboardController {
       );
     }
   }
+
+  @Put('edit')
+  async editDashboard(@Body() body: any) {
+    const { currentKeyname, newKeyname, show } = body;
+    if (!currentKeyname) {
+      throw new HttpException(
+        'El nombre actual del tablero (currentKeyname) es obligatorio.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    return this.dashboardService.editDashboard(currentKeyname, newKeyname, show);
+  }
+
 }
