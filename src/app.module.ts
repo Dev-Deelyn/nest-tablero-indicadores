@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ConfigModule } from '@nestjs/config';
+import { SectionsModule } from './sections/sections.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
     AuthModule,
     UserModule,
     DashboardModule,
+    SectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
