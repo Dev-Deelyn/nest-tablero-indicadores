@@ -13,34 +13,39 @@ export class DashboardService {
     return this.dashboardModel.find().exec();
   }
 
-  async createNewDashboard(keyname: string, show: boolean) {
-    const newDashboard = new this.dashboardModel({ keyname, show });
+  async createNewDashboard(keyname: string, show: boolean, icon?: string) {
+    const newDashboard = new this.dashboardModel({ keyname, show, icon});
     return newDashboard.save();
   }
 
-  async editDashboard(currentKeyname: string, newKeyname?: string, show?: boolean) {
+  async editDashboard(
+    dashboardId: string,          // Identificador del dashboard
+    newKeyname?: string,          // Nuevo nombre (opcional)
+    show?: boolean,               // Nuevo estado de visibilidad (opcional)
+    icon?: string                 // Nuevo icono (opcional)
+  ) {
     try {
-      const updateData: Partial<{ keyname: string; show: boolean }> = {};
-  
-      // Verificar si hay un nuevo keyname para actualizar
+      // Se arma el objeto de actualización con los campos que se deseen modificar.
+      const updateData: Partial<{ keyname: string; show: boolean; icon: string }> = {};
+      
       if (newKeyname) {
-        updateData.keyname = newKeyname; // Este será el nuevo nombre
+        updateData.keyname = newKeyname;  // Actualiza el nombre
       }
-  
-      // Verificar si hay un cambio en el estado de show
       if (typeof show === 'boolean') {
-        updateData.show = show;
+        updateData.show = show;           // Actualiza el campo de visibilidad
       }
-  
-      // Actualizar el documento si hay datos que cambiar
+      if (icon !== undefined) {
+        updateData.icon = icon;           // Actualiza el icono si se envía
+      }
+      
+      // Si existen datos a actualizar, se realiza la operación filtrando por _id.
       if (Object.keys(updateData).length > 0) {
         const editedDashboard = await this.dashboardModel.findOneAndUpdate(
-          { keyname: currentKeyname }, // Usamos el nombre actual como filtro
+          { _id: dashboardId },  // Se utiliza el _id del dashboard para identificar el registro
           { $set: updateData },
-          { new: true } // Retorna el documento actualizado
+          { new: true }          // Retorna el documento actualizado
         );
-  
-        return editedDashboard; // Retornar el tablero editado
+        return editedDashboard;
       } else {
         throw new Error('No hay campos para actualizar');
       }

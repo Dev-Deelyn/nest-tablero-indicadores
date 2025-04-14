@@ -1,15 +1,15 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Put} from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { Dashboard } from './dashboard.schema';
 
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) { }
+  constructor(private readonly dashboardService: DashboardService) {}
 
   @Post()
   async createNewDashboard(@Body() body: any) {
-    const { keyname, show } = body;
-    return this.dashboardService.createNewDashboard(keyname, show);
+    const { keyname, show, icon } = body;
+    return this.dashboardService.createNewDashboard(keyname, show, icon);
   }
 
   @Get('get-all')
@@ -25,16 +25,19 @@ export class DashboardController {
     }
   }
 
-  @Put('edit')
-  async editDashboard(@Body() body: any) {
-    const { currentKeyname, newKeyname, show } = body;
-    if (!currentKeyname) {
+  @Put('edit/:dashboardId')
+  async editDashboard(
+    @Param('dashboardId') dashboardId: string,
+    @Body() body: any
+  ) {
+    const { newKeyname, show, icon } = body;
+    if (!dashboardId) {
       throw new HttpException(
-        'El nombre actual del tablero (currentKeyname) es obligatorio.',
+        'El id del dashboard es obligatorio.',
         HttpStatus.BAD_REQUEST
       );
     }
-    return this.dashboardService.editDashboard(currentKeyname, newKeyname, show);
+    // Llamada al método editDashboard ajustado en el servicio.
+    return this.dashboardService.editDashboard(dashboardId, newKeyname, show, icon);
   }
-
 }

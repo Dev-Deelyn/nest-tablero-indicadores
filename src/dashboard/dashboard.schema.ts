@@ -10,6 +10,9 @@ export class Dashboard {
 
   @Prop({ required: true })
   show: boolean;
+
+  @Prop({ required: true })
+  icon: string;
 }
 
 export const DashboardSchema = SchemaFactory.createForClass(Dashboard);
