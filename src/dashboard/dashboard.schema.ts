@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
 
 export type DashboardDocument = Dashboard & Document;
 
@@ -13,6 +13,13 @@ export class Dashboard {
 
   @Prop({ required: true })
   icon: string;
+
+  @Prop({
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Section' }],
+    default: [],
+  })
+  sections: mongoose.Types.ObjectId[];
+
 }
 
 export const DashboardSchema = SchemaFactory.createForClass(Dashboard);

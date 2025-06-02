@@ -1,46 +1,69 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Sections, SectionsDocument } from './sections.schema';
-import { Dashboard, DashboardDocument } from 'src/dashboard/dashboard.schema';
+import { Section, SectionDocument } from './sections.schema';
 
 @Injectable()
 export class SectionsService {
   constructor(
-    @InjectModel(Sections.name) private sectionModel: Model<SectionsDocument>,
-    @InjectModel(Dashboard.name) private readonly dashboardModel: Model<DashboardDocument>,
+    @InjectModel(Section.name) private sectionModel: Model<SectionDocument>,
   ) {}
 
-  // Método para crear una sección, almacenando el dashboard embebido
   async createSection(
     keyname: string,
-    dashboardId: string,
     show: boolean,
-  ): Promise<SectionsDocument> {
-    // Busca el dashboard por su id
-    const dashboard = await this.dashboardModel.findById(dashboardId);
-    if (!dashboard) {
-      throw new NotFoundException(`Dashboard con id ${dashboardId} no encontrado`);
+  ){
+
+    try {
+       const newSection = new this.sectionModel({
+        keyname,
+        show,
+      });
+      return await newSection.save();
+    } catch (error) {
+      console.error('Error al crear la sección: ', error);
+      throw error;
     }
-
-    // Construimos el objeto embebido con los campos deseados:
-    const embeddedDashboard = {
-      _id: dashboard._id,
-      keyname: dashboard.keyname,
-      icon: dashboard.icon,
-    };
-
-    // Creamos la nueva sección, asignando el objeto embebido
-    const newSection = new this.sectionModel({
-      keyname,
-      dashboard: embeddedDashboard,
-      show,
-    });
-    return await newSection.save();
   }
 
   // Método para traer todas las secciones
-  async getAllSections(): Promise<SectionsDocument[]> {
+  async getAllSections(): Promise<SectionDocument[]> {
     return await this.sectionModel.find().exec();
   }
+
+  async editSection(
+    sectionId: string,
+    newkeyname?: string,
+    show?: boolean
+  ){
+    try {
+      const updateData: Partial<{ keyname: string; show: boolean;}> = {};
+
+      if(newkeyname){
+        updateData.keyname = newkeyname
+      }
+
+      if(typeof show === 'boolean'){
+        updateData.show = show
+      }
+
+       if (Object.keys(updateData).length > 0) {
+        const editedDashboard = await this.sectionModel.findOneAndUpdate(
+          { _id: sectionId },
+          { $set: updateData },
+          { new: true }
+        );
+        return editedDashboard;
+      } else {
+        throw new Error('No hay campos para actualizar');
+      }
+    } catch (error) {
+      
+    }
+  }
+
+  async deleteSection(sectionId: string): Promise<SectionDocument> {
+    return await this.sectionModel.findByIdAndDelete(sectionId);
+  }
+
 }

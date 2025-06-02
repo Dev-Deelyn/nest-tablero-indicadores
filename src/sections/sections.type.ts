@@ -1,8 +1,7 @@
 import { Types } from "mongoose";
-import { Sections } from "./sections.schema";
+import { Section } from "./sections.schema";
 
 export interface SectionsDocument {
-  section: Types.ObjectId | Sections; // Puede ser solo el ObjectId o el objeto completo (dependiendo de si lo poblas o no)
-  dashboard: object;
+  section: Types.ObjectId | Section; // Puede ser solo el ObjectId o el objeto completo (dependiendo de si lo poblas o no)
   visibilidad: boolean;
 }

@@ -13,10 +13,10 @@ export class DashboardController {
   }
 
   @Get('get-all')
-  async getAllUsers(): Promise<Dashboard[]> {
+  async getAllDashboards(): Promise<Dashboard[]> {
     try {
-      const users = await this.dashboardService.getAllDashboards();
-      return users;
+      const dashboards = await this.dashboardService.getAllDashboards();
+      return dashboards;
     } catch (error) {
       throw new HttpException(
         'Error al obtener los tableros',
@@ -24,7 +24,7 @@ export class DashboardController {
       );
     }
   }
-
+  
   @Put('edit/:dashboardId')
   async editDashboard(
     @Param('dashboardId') dashboardId: string,
@@ -40,4 +40,22 @@ export class DashboardController {
     // Llamada al método editDashboard ajustado en el servicio.
     return this.dashboardService.editDashboard(dashboardId, newKeyname, show, icon);
   }
+
+  @Post('add/:dashboardId')
+  async addSection(
+    @Param('dashboardId') dashboardId: string,
+    @Body() body: any
+  ) {
+    const { sections } = body;
+    if (!dashboardId) {
+      throw new HttpException(
+        'El id del dashboard es obligatorio.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    
+    // Llamada al método editDashboard ajustado en el servicio.
+    return this.dashboardService.updateDashboardSections(dashboardId, sections);
+  }
+
 }
