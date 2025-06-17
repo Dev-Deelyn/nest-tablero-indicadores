@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
 import { User, UserDocument } from './user.schema';
 import { UserService } from './user.service';
@@ -10,8 +10,8 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get()
   getProfile(@Request() req) {
-    const { username, profileType, dashboards } = req.user as UserDocument;
-    return { username, profileType, dashboards };
+    const { username, profileType, access } = req.user as UserDocument;
+    return { username, profileType, access };
   }
 
   @Post()
@@ -34,33 +34,30 @@ export class UserController {
   }
 
   @Get('get-all')
-async getAllUsers(): Promise<User[]> {
-  try {
-    return await this.userService.getAllUsers();
-  } catch (error) {
-    throw new HttpException(
-      `Error al obtener los usuarios: ${error.message}`,
-      HttpStatus.INTERNAL_SERVER_ERROR
-    );
-  }
-}
-
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('dashboard/:dashboardId')
-  async removeDashboardFromUser(
-    @Request() request,
-    @Param('dashboardId') dashboardId: string,
-  ): Promise<User> {
-    return this.userService.removeDashboardFromUser(request.user.sub, dashboardId);
+  async getAllUsers(): Promise<User[]> {
+    try {
+      return await this.userService.getAllUsers();
+    } catch (error) {
+      throw new HttpException(
+        `Error al obtener los usuarios: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('dashboard/:dashboardId')
-  async addDashboardToUser(
-    @Request() request,
-    @Param('dashboardId') dashboardId: string,
-  ): Promise<User> {
-    return this.userService.addDashboardToUser(request.user.sub, dashboardId);
+  @Post('access/:userId')
+  async updateAccess(
+    @Param('userId') userId: string,
+    @Body('access') access: { dashboard: string; sections: string[] }[],
+  ) {
+    try {
+      return await this.userService.updateUserAccess(userId, access);
+    } catch (err) {
+      throw new HttpException(
+        err.message || 'Error al actualizar access',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

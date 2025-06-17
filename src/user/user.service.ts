@@ -31,52 +31,34 @@ export class UserService {
     return { message: 'Usuario eliminado correctamente.' };
   }
 
-  async addDashboardToUser(userId: string, dashboardId: string): Promise<User> {
-    // Busca el dashboard primero
-    const dashboard = await this.dashboardModel.findById(dashboardId); // Asegúrate de que tienes el modelo de Dashboard disponible
-    if (!dashboard) {
-      throw new HttpException('Dashboard no encontrado', HttpStatus.NOT_FOUND);
-    }
-  
-    // Extrae la propiedad `keyname`
-    const dashboardKeyname = dashboard.keyname;
-  
-    // Actualiza el usuario con el `keyname` del dashboard
-    const updatedUser = await this.userModel.findByIdAndUpdate(
-      userId,
-      { $push: { dashboards: dashboardKeyname } }, // Guarda `keyname` en lugar del ID
-      { new: true }
-    ).populate('dashboards'); // Popula si `dashboards` sigue siendo una referencia
-  
-    if (!updatedUser) {
-      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
-    }
-  
-    return updatedUser;
-  }
-  
-
-  async removeDashboardFromUser(userId: string, dashboardId: string): Promise<User> {
-    const dashboardExists = await this.dashboardModel.exists({ _id: dashboardId });
-    if (!dashboardExists) {
-      throw new Error('El tablero no existe.');
-    }
-
-    const updatedUser = await this.userModel.findByIdAndUpdate(
-      userId,
-      { $pull: { dashboards: new Types.ObjectId(dashboardId) } },
-      { new: true },
-    ).populate('dashboards');
-
-    if (!updatedUser) {
-      throw new Error('Usuario no encontrado.');
-    }
-
-    return updatedUser;
-  }
-
+  // Este método podría ser utilizado para obtener los dashboards filtrados por el acceso asignado
   async getUserDashboards(userId: string): Promise<Dashboard[]> {
     const user = await this.userModel.findById(userId).populate<{ dashboards: Dashboard[] }>('dashboards');
+    // La lógica adicional de filtrado según user.access se aplicaría aquí, dependiendo de tu requerimiento.
     return user?.dashboards || [];
   }
+
+  async updateUserAccess( userId: string, access: { dashboard: string; sections: string[] }[], ): Promise<User> {
+    // Convertimos strings a ObjectId
+    const newAccess = access.map(a => ({
+      dashboard: new Types.ObjectId(a.dashboard),
+      sections: a.sections.map(s => new Types.ObjectId(s)),
+    }));
+
+    // Actualizamos y retornamos el documento nuevo
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { access: newAccess },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    return updated;
+  }
+
 }

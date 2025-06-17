@@ -1,5 +1,7 @@
+// user.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { DashboardAccessSchema } from './dashboard-access.schema'; // Ajusta la ruta según tu estructura
 
 export type UserDocument = User & Document;
 
@@ -17,8 +19,11 @@ export class User {
   @Prop({ required: true })
   profileType: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Dashboard' }] })
-  dashboards: Types.ObjectId[];
+  @Prop({ type: [DashboardAccessSchema], default: [] })
+  access: Array<{
+    dashboard: Types.ObjectId;
+    sections: Types.ObjectId[];
+  }>;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
