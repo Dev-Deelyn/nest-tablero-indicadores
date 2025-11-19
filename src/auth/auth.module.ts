@@ -13,7 +13,6 @@ import { UserModule } from 'src/user/user.module';
     JwtModule.register({
       global: true,
       secret: 'S3CR370',
-      signOptions: { expiresIn: '60m' },
     }),
   ],
   providers: [AuthService],

@@ -10,13 +10,16 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException({
+        message: 'Acceso denegado',
+        reason: 'Token expirado',
+      });
     }
     try {
       const payload = await this.jwtService.verifyAsync(
         token,
         {
-          secret: 'S3CR370' //jwtConstants.secret
+          secret: 'S3CR370'
         }
       );
       request["user"] = payload;

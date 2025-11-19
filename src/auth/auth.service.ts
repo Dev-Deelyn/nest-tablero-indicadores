@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs'
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -19,19 +19,63 @@ export class AuthService {
         const { password, ...result } = user.toObject();
         return result;
       } else {
-        throw new HttpException('La contraseña ingresada es incorrecta', HttpStatus.UNAUTHORIZED)
+        throw new HttpException('Usuario o contraseña no válidos', HttpStatus.UNAUTHORIZED)
       }
     } else {
-      throw new HttpException('El usuario de sesión no existe', HttpStatus.UNAUTHORIZED)
+      throw new HttpException('Usuario o contraseña no válidos', HttpStatus.UNAUTHORIZED)
     }
   }
 
   async login(user: any) {
     const payload = { username: user.username, sub: user._id, profileType: user.profileType, access: user.access };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: 'S3CR370',
+      expiresIn: '1h'
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: 'S3CR370',
+      expiresIn: '30d'
+    });
+
+    // Guardar refresh token hasheado en DB
+    const hashedRt = await bcrypt.hash(refreshToken, 10);
+    await this.userModel.findByIdAndUpdate(user._id, { refreshToken: hashedRt });
+
+    return { access_token: accessToken, refresh_token: refreshToken };
   }
+
+  async logout(userId: string) {
+    await this.userModel.findByIdAndUpdate(userId, { refreshToken: null})
+  }
+
+  async refreshTokens(userId: string, rt: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user || !user.refreshToken) throw new UnauthorizedException('No autorizado');
+
+    const rtMatches = await bcrypt.compare(rt, user.refreshToken);
+    if (!rtMatches) throw new UnauthorizedException('Refresh token inválido');
+
+    const payload = { username: user.username, sub: user._id, profileType: user.profileType, access: user.access };
+
+    const newAccessToken = this.jwtService.sign(payload, {
+      secret: 'S3CR370',
+      expiresIn: '1h'
+    });
+
+    // const newRefreshToken = this.jwtService.sign(payload, {
+    //   secret: 'S3CR370',
+    //   expiresIn: '30d'
+    // });
+
+    // Rotar refresh token
+    // const hashedRt = await bcrypt.hash(newRefreshToken, 10);
+    // await this.userModel.findByIdAndUpdate(user._id, { refreshToken: hashedRt });
+
+    return { access_token: newAccessToken };
+  }
+
 
   async register(username: string, password: string, email: string, profileType: string) {
     const hashedPassword = await bcrypt.hash(password, 10);

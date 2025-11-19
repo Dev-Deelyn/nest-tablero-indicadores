@@ -33,6 +33,7 @@ export class UserController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('get-all')
   async getAllUsers(): Promise<User[]> {
     try {

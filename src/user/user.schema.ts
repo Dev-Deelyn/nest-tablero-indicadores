@@ -24,6 +24,9 @@ export class User {
     dashboard: Types.ObjectId;
     sections: Types.ObjectId[];
   }>;
+
+  @Prop()
+  refreshToken?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
