@@ -54,3 +54,33 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ---- Python microservice ignores ----
+
+# Entornos virtuales
+env/
+venv/
+ENV/
+.analytics-env/
+*/env/
+*/venv/
+*/ENV/
+
+# Cache de Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos temporales de Python
+*.pyo
+*.pyd
+*.pdb
+
+# Archivos de logs del microservicio
+analytics-service/*.log
+analytics-service/logs/
+
+# Archivos generados por herramientas Python
+*.egg-info/
+.eggs/
