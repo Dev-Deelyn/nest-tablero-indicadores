@@ -69,6 +69,11 @@ async def read_columns(filename: str = Form(...), sheet_name: str = Form(...)):
         if df.empty:
             raise HTTPException(status_code=400, detail="La hoja seleccionada está vacía o no contiene datos")
 
+        # Convertir columnas datetime a string
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]):
+                df[col] = df[col].astype(str)
+
         return JSONResponse(content={
             "columns": df.columns.tolist(),
             "data": df.to_dict(orient="records")
