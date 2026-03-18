@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 def get_excel_sheets(file_path: str):
@@ -12,25 +13,23 @@ def get_excel_sheets(file_path: str):
 
 def read_excel_data(file_path: str, sheet_name: str):
     try:
-        # Intento principal
         df = pd.read_excel(
             file_path,
             sheet_name=sheet_name,
             engine="openpyxl"
         )
-
     except Exception:
-        # Fallback para XLS viejos
         df = pd.read_excel(
             file_path,
             sheet_name=sheet_name
         )
 
-    # Limpieza PRO
-    df = df.dropna(how="all")  # elimina filas totalmente vacías
-    df.columns = df.columns.astype(str)  # evita columnas raras
-
-    # eliminar columnas vacías
+    # Limpieza
+    df = df.dropna(how="all")
+    df.columns = df.columns.astype(str)
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+
+    # Reemplazar NaN por None (se convierte a null en JSON, evita fallo de serialización)
+    df = df.where(pd.notnull(df), None)
 
     return df

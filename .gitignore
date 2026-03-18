@@ -84,3 +84,4 @@ analytics-service/logs/
 # Archivos generados por herramientas Python
 *.egg-info/
 .eggs/
+/uploads/

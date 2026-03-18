@@ -1,48 +1,85 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+import json
+import math
+import os
+import traceback
+
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import os
-from app.excel_utils import get_excel_sheets, read_excel_data
-from app.charts import prepare_chart_data
-import pandas as pd
 
-# Crear la app FastAPI
+from app.charts import prepare_chart_data
+from app.excel_utils import get_excel_sheets, read_excel_data
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+
 app = FastAPI(
     title="Excel Analytics Service",
     description="Microservicio para carga, lectura y análisis de archivos Excel.",
-    version="1.1.0"
+    version="1.3.0",
 )
 
-# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dominio del frontend React
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Directorio de uploads
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# ENDPOINT: Subir archivo Excel
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def safe_value(val):
+    """Convierte cualquier tipo numpy/pandas a tipo Python nativo serializable por JSON."""
+    if val is None:
+        return None
+    if isinstance(val, float) and math.isnan(val):
+        return None
+    if isinstance(val, np.integer):
+        return int(val)
+    if isinstance(val, np.floating):
+        return float(val)
+    if isinstance(val, np.bool_):
+        return bool(val)
+    if isinstance(val, pd.Timestamp):
+        return val.isoformat()
+    return val
+
+
+def serialize_records(df: pd.DataFrame) -> list[dict]:
+    """Convierte un DataFrame a lista de dicts con valores seguros para JSON."""
+    return [
+        {col: safe_value(val) for col, val in row.items()}
+        for row in df.to_dict(orient="records")
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
 @app.post("/upload/")
 async def upload_excel(file: UploadFile = File(...)):
     try:
-        # Validar extensión
         if not file.filename.endswith((".xlsx", ".xls")):
             raise HTTPException(
                 status_code=400,
-                detail="El archivo debe ser un Excel (.xlsx o .xls)"
+                detail="El archivo debe ser un Excel (.xlsx o .xls)",
             )
 
-        # Guardar el archivo temporalmente
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Obtener hojas disponibles
         sheets = get_excel_sheets(file_path)
         if not sheets:
             raise HTTPException(status_code=400, detail="El archivo no contiene hojas válidas")
@@ -52,12 +89,16 @@ async def upload_excel(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error al subir el archivo: {str(e)}")
 
 
-# ENDPOINT: Leer columnas y datos
 @app.post("/read-columns/")
 async def read_columns(filename: str = Form(...), sheet_name: str = Form(...)):
+    """
+    Lee columnas, datos y metadatos de valores únicos por columna.
+    El frontend usa column_meta para construir los filtros dinámicos.
+    """
     try:
         file_path = os.path.join(UPLOAD_DIR, filename)
 
@@ -67,31 +108,45 @@ async def read_columns(filename: str = Form(...), sheet_name: str = Form(...)):
         df = read_excel_data(file_path, sheet_name)
 
         if df.empty:
-            raise HTTPException(status_code=400, detail="La hoja seleccionada está vacía o no contiene datos")
+            raise HTTPException(
+                status_code=400,
+                detail="La hoja seleccionada está vacía o no contiene datos",
+            )
 
-        # Convertir columnas datetime a string
+        # Metadatos por columna: tipo y valores únicos (para armar filtros en el frontend)
+        column_meta: dict = {}
         for col in df.columns:
-            if pd.api.types.is_datetime64_any_dtype(df[col]):
-                df[col] = df[col].astype(str)
+            unique_vals = df[col].dropna().unique().tolist()
+            unique_vals = [safe_value(v) for v in unique_vals]
+            try:
+                unique_vals_sorted = sorted(unique_vals, key=lambda x: str(x))
+            except Exception:
+                unique_vals_sorted = unique_vals
+            column_meta[col] = {
+                "type": str(df[col].dtype),
+                # Máx. 200 valores únicos para no saturar el frontend
+                "unique_values": unique_vals_sorted[:200],
+            }
 
         return JSONResponse(content={
             "columns": df.columns.tolist(),
-            "data": df.to_dict(orient="records")
+            "column_meta": column_meta,
+            "data": serialize_records(df),
         })
 
     except HTTPException:
         raise
     except Exception as e:
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error al leer columnas: {str(e)}")
 
 
-# ENDPOINT: Generar datos del gráfico
 @app.post("/generate-chart/")
 async def generate_chart(
     filename: str = Form(...),
     sheet_name: str = Form(...),
     x_col: str = Form(...),
-    y_col: str = Form(...)
+    y_col: str = Form(...),
 ):
     try:
         file_path = os.path.join(UPLOAD_DIR, filename)
@@ -104,9 +159,11 @@ async def generate_chart(
         if df.empty:
             raise HTTPException(status_code=400, detail="La hoja seleccionada está vacía")
 
-        # Validar que las columnas existan
         if x_col not in df.columns or y_col not in df.columns:
-            raise HTTPException(status_code=400, detail="Las columnas seleccionadas no existen en la hoja")
+            raise HTTPException(
+                status_code=400,
+                detail="Las columnas seleccionadas no existen en la hoja",
+            )
 
         data = prepare_chart_data(df, x_col, y_col)
         return JSONResponse(content=data)
@@ -114,12 +171,160 @@ async def generate_chart(
     except HTTPException:
         raise
     except Exception as e:
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error al generar datos del gráfico: {str(e)}")
 
-# HEALTHCHECK opcional
+
+@app.post("/filter-data/")
+async def filter_data(
+    filename: str = Form(...),
+    sheet_name: str = Form(...),
+    x_col: str = Form(...),
+    y_col: str = Form(...),
+    group_col: str = Form(None),
+    filters: str = Form("{}"),
+):
+    """
+    Devuelve datos filtrados y agrupados listos para graficar con múltiples series.
+
+    - filters: JSON string con { "COLUMNA": ["val1", "val2"] }
+    - group_col: columna para segmentar en series (ej: CURSO, NIVEL, GESTION)
+    """
+    try:
+        file_path = os.path.join(UPLOAD_DIR, filename)
+
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="El archivo no existe")
+
+        df = read_excel_data(file_path, sheet_name)
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="La hoja está vacía")
+
+        # ── Aplicar filtros dinámicos ──
+        try:
+            filter_dict: dict = json.loads(filters)
+        except Exception:
+            filter_dict = {}
+
+        for col, values in filter_dict.items():
+            if col in df.columns and values:
+                df = df[df[col].astype(str).isin([str(v) for v in values])]
+
+        if df.empty:
+            return JSONResponse(content={
+                "labels": [],
+                "datasets": [],
+                "filtered_rows": 0,
+            })
+
+        # ── Validar columnas requeridas ──
+        for col in [x_col, y_col]:
+            if col not in df.columns:
+                raise HTTPException(status_code=400, detail=f"Columna '{col}' no existe en la hoja")
+
+        # ── Sin agrupación: serie única ──
+        if not group_col or group_col not in df.columns:
+            # Si y_col no es numérica, buscar primera columna numérica disponible
+            if pd.api.types.is_numeric_dtype(df[y_col]):
+                value_col = y_col
+            else:
+                numeric_cols = [
+                    c for c in df.columns
+                    if pd.api.types.is_numeric_dtype(df[c]) and c != x_col
+                ]
+                if not numeric_cols:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"La columna '{y_col}' no es numérica y no se encontró otra columna numérica."
+                    )
+                value_col = numeric_cols[0]
+
+            df["__y__"] = pd.to_numeric(df[value_col], errors="coerce")
+            grouped = df.groupby(x_col, sort=True)["__y__"].mean().reset_index()
+            try:
+                grouped = grouped.sort_values(x_col)
+            except Exception:
+                pass
+
+            return JSONResponse(content={
+                "labels": [safe_value(v) for v in grouped[x_col].tolist()],
+                "datasets": [{
+                    "label": value_col,
+                    "data": [None if (v != v) else safe_value(v) for v in grouped["__y__"].tolist()],
+                }],
+                "filtered_rows": len(df),
+            })
+
+        # ── Con agrupación: pivot_table genera la matriz completa sin NaN por tipo ──
+
+        # 1. Determinar qué columna contiene los valores numéricos a graficar.
+        #    Si y_col es numérica, usarla directamente.
+        #    Si es texto (ej: columna "TASA" con strings), buscar la primera
+        #    columna numérica del df que no sea x_col ni group_col.
+        if pd.api.types.is_numeric_dtype(df[y_col]):
+            value_col = y_col
+        else:
+            numeric_cols = [
+                c for c in df.columns
+                if pd.api.types.is_numeric_dtype(df[c])
+                and c not in (x_col, group_col)
+            ]
+            if not numeric_cols:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La columna '{y_col}' no es numérica y no se encontró otra columna numérica para graficar."
+                )
+            value_col = numeric_cols[0]
+
+        # 2. Normalizar x y group a string para evitar mismatch int/float/str
+        df["__x__"] = df[x_col].astype(str)
+        df["__g__"] = df[group_col].astype(str)
+        df["__y__"] = pd.to_numeric(df[value_col], errors="coerce")
+
+        # 3. Elegir aggfunc: si hay exactamente 1 fila por combinación → mean == first
+        #    Para tasas, mean es siempre más correcto que sum
+        pivot = df.pivot_table(
+            index="__x__",
+            columns="__g__",
+            values="__y__",
+            aggfunc="mean",
+        )
+
+        # 4. Ordenar eje X
+        try:
+            pivot = pivot.reindex(sorted(pivot.index.tolist(), key=lambda v: str(v)))
+        except Exception:
+            pass
+
+        labels = pivot.index.tolist()
+        group_values = pivot.columns.tolist()
+
+        datasets = []
+        for gval in group_values:
+            col_data = pivot[gval].tolist()
+            datasets.append({
+                "label": str(gval),
+                # NaN de pandas → None para JSON (v != v es True solo para NaN)
+                "data": [None if (v != v) else safe_value(v) for v in col_data],
+            })
+
+        # 5. Limpiar columnas temporales
+        df.drop(columns=["__x__", "__g__", "__y__"], inplace=True, errors="ignore")
+
+        return JSONResponse(content={
+            "labels": labels,
+            "datasets": datasets,
+            "filtered_rows": len(df),
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error al filtrar datos: {str(e)}")
+
+
 @app.get("/health/")
 async def health_check():
-    """
-    Endpoint para verificar si el microservicio está corriendo correctamente.
-    """
     return {"status": "ok", "message": "Servicio FastAPI activo y funcionando."}
