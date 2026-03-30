@@ -8,8 +8,8 @@ export class DashboardController {
 
   @Post()
   async createNewDashboard(@Body() body: any) {
-    const { keyname, show, icon } = body;
-    return this.dashboardService.createNewDashboard(keyname, show, icon);
+    const { keyname, name, show, icon } = body;
+    return this.dashboardService.createNewDashboard(keyname, name, show, icon);
   }
 
   @Get('get-all')
@@ -24,21 +24,20 @@ export class DashboardController {
       );
     }
   }
-  
+
   @Put('edit/:dashboardId')
   async editDashboard(
     @Param('dashboardId') dashboardId: string,
     @Body() body: any
   ) {
-    const { newKeyname, show, icon } = body;
+    const { newKeyname, newName, show, icon } = body;
     if (!dashboardId) {
       throw new HttpException(
         'El id del dashboard es obligatorio.',
         HttpStatus.BAD_REQUEST
       );
     }
-    // Llamada al método editDashboard ajustado en el servicio.
-    return this.dashboardService.editDashboard(dashboardId, newKeyname, show, icon);
+    return this.dashboardService.editDashboard(dashboardId, newKeyname, newName, show, icon);
   }
 
   @Post('add/:dashboardId')
@@ -53,9 +52,6 @@ export class DashboardController {
         HttpStatus.BAD_REQUEST
       );
     }
-    
-    // Llamada al método editDashboard ajustado en el servicio.
     return this.dashboardService.updateDashboardSections(dashboardId, sections);
   }
-
 }

@@ -15,7 +15,7 @@ export class DashboardService {
     try {
       const dashboard = await this.dashboardModel
         .find()
-        .populate('sections', 'keyname show')
+        .populate('sections', 'keyname name show')
         .exec();
 
       return dashboard;
@@ -25,29 +25,25 @@ export class DashboardService {
     }
   }
 
-  async createNewDashboard(keyname: string, show: boolean, icon?: string) {
-    const newDashboard = new this.dashboardModel({ keyname, show, icon });
+  async createNewDashboard(keyname: string, name: string, show: boolean, icon?: string) {
+    const newDashboard = new this.dashboardModel({ keyname, name, show, icon });
     return newDashboard.save();
   }
 
   async editDashboard(
     dashboardId: string,
     newKeyname?: string,
+    newName?: string,
     show?: boolean,
     icon?: string,
   ) {
     try {
-      const updateData: Partial<{ keyname: string; show: boolean; icon: string }> = {};
+      const updateData: Partial<{ keyname: string; name: string; show: boolean; icon: string }> = {};
 
-      if (newKeyname) {
-        updateData.keyname = newKeyname;
-      }
-      if (typeof show === 'boolean') {
-        updateData.show = show;
-      }
-      if (icon !== undefined) {
-        updateData.icon = icon;
-      }
+      if (newKeyname) updateData.keyname = newKeyname;
+      if (newName) updateData.name = newName;
+      if (typeof show === 'boolean') updateData.show = show;
+      if (icon !== undefined) updateData.icon = icon;
 
       if (Object.keys(updateData).length > 0) {
         const editedDashboard = await this.dashboardModel.findOneAndUpdate(
@@ -67,7 +63,6 @@ export class DashboardService {
 
   async updateDashboardSections(dashboardId: string, sections: string[]) {
     try {
-
       const objectIds = sections.map(id => new mongoose.Types.ObjectId(id));
 
       const updatedDashboard = await this.dashboardModel.findByIdAndUpdate(
@@ -78,11 +73,10 @@ export class DashboardService {
 
       return this.dashboardModel
         .findById(updatedDashboard._id)
-        .populate('sections', 'keyname show');
+        .populate('sections', 'keyname name show');
     } catch (error) {
       console.error('Error al actualizar las secciones: ', error);
       throw error;
     }
   }
-
 }

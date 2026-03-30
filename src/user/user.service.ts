@@ -61,4 +61,30 @@ export class UserService {
     return updated;
   }
 
+  async getMyDashboards(userId: string): Promise<any[]> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+
+    const result = await Promise.all(
+      user.access.map(async (a) => {
+        const dashboard = await this.dashboardModel
+          .findOne({ _id: a.dashboard, show: true })
+          .populate('sections', 'keyname name show')
+          .exec();
+
+        if (!dashboard) return null;
+
+        const accessibleSections = (dashboard.sections as any[])
+          .filter(s => s.show && a.sections.some(id => id.toString() === s._id.toString()));
+
+        return {
+          keyname: dashboard.keyname,
+          sections: accessibleSections.map(s => s.keyname)
+        };
+      })
+    );
+
+    return result.filter(Boolean);
+  }
+
 }

@@ -1,4 +1,3 @@
-// sections.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
@@ -9,6 +8,9 @@ export class Section {
   @Prop({ required: true, unique: true })
   keyname: string;
 
+  @Prop()
+  name: string;
+
   @Prop({ required: true })
   show: boolean;
 
@@ -17,4 +19,3 @@ export class Section {
 }
 
 export const SectionSchema = SchemaFactory.createForClass(Section);
-

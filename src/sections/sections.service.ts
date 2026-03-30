@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Section, SectionDocument } from './sections.schema';
 
 @Injectable()
@@ -9,16 +9,9 @@ export class SectionsService {
     @InjectModel(Section.name) private sectionModel: Model<SectionDocument>,
   ) {}
 
-  async createSection(
-    keyname: string,
-    show: boolean,
-  ){
-
+  async createSection(keyname: string, name: string, show: boolean) {
     try {
-       const newSection = new this.sectionModel({
-        keyname,
-        show,
-      });
+      const newSection = new this.sectionModel({ keyname, name, show });
       return await newSection.save();
     } catch (error) {
       console.error('Error al crear la sección: ', error);
@@ -26,44 +19,35 @@ export class SectionsService {
     }
   }
 
-  // Método para traer todas las secciones
   async getAllSections(): Promise<SectionDocument[]> {
     return await this.sectionModel.find().exec();
   }
 
-  async editSection(
-    sectionId: string,
-    newkeyname?: string,
-    show?: boolean
-  ){
+  async editSection(sectionId: string, newKeyname?: string, newName?: string, show?: boolean) {
     try {
-      const updateData: Partial<{ keyname: string; show: boolean;}> = {};
+      const updateData: Partial<{ keyname: string; name: string; show: boolean }> = {};
 
-      if(newkeyname){
-        updateData.keyname = newkeyname
-      }
+      if (newKeyname) updateData.keyname = newKeyname;
+      if (newName) updateData.name = newName;
+      if (typeof show === 'boolean') updateData.show = show;
 
-      if(typeof show === 'boolean'){
-        updateData.show = show
-      }
-
-       if (Object.keys(updateData).length > 0) {
-        const editedDashboard = await this.sectionModel.findOneAndUpdate(
+      if (Object.keys(updateData).length > 0) {
+        const editedSection = await this.sectionModel.findOneAndUpdate(
           { _id: sectionId },
           { $set: updateData },
           { new: true }
         );
-        return editedDashboard;
+        return editedSection;
       } else {
         throw new Error('No hay campos para actualizar');
       }
     } catch (error) {
-      
+      console.error('Error al editar la sección: ', error);
+      throw error;
     }
   }
 
   async deleteSection(sectionId: string): Promise<SectionDocument> {
     return await this.sectionModel.findByIdAndDelete(sectionId);
   }
-
 }

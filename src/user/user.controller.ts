@@ -61,4 +61,11 @@ export class UserController {
       );
     }
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my-dashboards')
+  async getMyDashboards(@Request() req) {
+    const userId = req.user.sub.toString();
+    return this.userService.getMyDashboards(userId);
+  }
 }
