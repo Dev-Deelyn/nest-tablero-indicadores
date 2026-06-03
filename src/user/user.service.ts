@@ -79,6 +79,8 @@ export class UserService {
 
         return {
           keyname: dashboard.keyname,
+          name: dashboard.name,
+          icon: dashboard.icon,
           sections: accessibleSections.map(s => s.keyname)
         };
       })
