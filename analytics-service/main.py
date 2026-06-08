@@ -30,8 +30,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------------------------------
+# Carpetas
+# ---------------------------------------------------------------------------
+
 UPLOAD_DIR = "uploads"
+DATA_DIR = "data"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -328,3 +334,54 @@ async def filter_data(
 @app.get("/health/")
 async def health_check():
     return {"status": "ok", "message": "Servicio FastAPI activo y funcionando."}
+
+@app.post("/system-data/read-columns/")
+async def system_read_columns(filename: str = Form(...), sheet_name: str = Form(...)):
+    try:
+        # Busca el archivo en data/ recursivamente
+        file_path = None
+        for root, dirs, files in os.walk(DATA_DIR):
+            if filename in files:
+                file_path = os.path.join(root, filename)
+                break
+
+        if not file_path:
+            raise HTTPException(status_code=404, detail=f"Archivo '{filename}' no encontrado en data/")
+
+        df = read_excel_data(file_path, sheet_name)
+
+        if df.empty:
+            raise HTTPException(status_code=400, detail="La hoja está vacía o no tiene datos válidos")
+
+        column_meta: dict = {}
+        for col in df.columns:
+            unique_vals = df[col].dropna().unique().tolist()
+            unique_vals = [safe_value(v) for v in unique_vals]
+            try:
+                unique_vals_sorted = sorted(unique_vals, key=lambda x: str(x))
+            except Exception:
+                unique_vals_sorted = unique_vals
+            column_meta[col] = {
+                "type": str(df[col].dtype),
+                "unique_values": unique_vals_sorted[:200],
+            }
+
+        return JSONResponse(content={
+            "columns": df.columns.tolist(),
+            "column_meta": column_meta,
+            "data": serialize_records(df),
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error al leer archivo del sistema: {str(e)}")
+    
+@app.get("/get-test")
+async def get_test():
+    print("Hola desde el endpoint /get-test")
+    
+    return {
+        "message": "Console log ejecutado correctamente"
+    }
